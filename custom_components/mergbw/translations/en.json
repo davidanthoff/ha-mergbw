@@ -1,0 +1,67 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "description": "Pick a sunset lamp that Home Assistant has discovered, or type the Bluetooth address of one.",
+        "data": {
+          "address": "Bluetooth address"
+        },
+        "data_description": {
+          "address": "For example AA:BB:CC:DD:EE:FF."
+        }
+      },
+      "bluetooth_confirm": {
+        "description": "Do you want to set up {name} ({address})?"
+      }
+    },
+    "error": {
+      "invalid_address": "This is not a valid Bluetooth address. Use the form AA:BB:CC:DD:EE:FF."
+    },
+    "abort": {
+      "already_configured": "This lamp is already configured.",
+      "already_in_progress": "Setup of this lamp is already in progress."
+    }
+  },
+  "exceptions": {
+    "communication_error": {
+      "message": "Could not reach {name}: {error}"
+    },
+    "unknown_effect": {
+      "message": "Unknown effect: {effect}"
+    },
+    "invalid_frame": {
+      "message": "Not a hex-encoded frame: {frame}"
+    },
+    "entry_not_found": {
+      "message": "No MeRGBW lamp with config entry ID {entry_id}."
+    },
+    "entry_not_loaded": {
+      "message": "{name} is not loaded."
+    }
+  },
+  "services": {
+    "send_raw": {
+      "name": "Send raw frame",
+      "description": "Sends a raw protocol frame to a lamp and optionally returns what the lamp sends back. Meant for working out the protocol. Does not update the light's state.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Lamp",
+          "description": "The lamp to send the frame to."
+        },
+        "frame": {
+          "name": "Frame",
+          "description": "The bytes to send, hex encoded. Spaces and colons are ignored."
+        },
+        "add_checksum": {
+          "name": "Add checksum",
+          "description": "Append the checksum byte to the frame before sending it."
+        },
+        "listen": {
+          "name": "Listen",
+          "description": "When a response is requested, how long to collect notifications from the lamp."
+        }
+      }
+    }
+  }
+}

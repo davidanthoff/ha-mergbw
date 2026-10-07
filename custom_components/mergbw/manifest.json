@@ -1,0 +1,21 @@
+{
+  "domain": "mergbw",
+  "name": "MeRGBW Sunset Lamp",
+  "bluetooth": [
+    {
+      "local_name": "Sunset*",
+      "service_uuid": "00003519-0000-1000-8000-00805f9b34fb",
+      "connectable": true
+    }
+  ],
+  "codeowners": ["@davidanthoff"],
+  "config_flow": true,
+  "dependencies": ["bluetooth_adapters"],
+  "documentation": "https://github.com/davidanthoff/ha-mergbw",
+  "integration_type": "device",
+  "iot_class": "assumed_state",
+  "issue_tracker": "https://github.com/davidanthoff/ha-mergbw/issues",
+  "loggers": ["bleak_retry_connector"],
+  "requirements": [],
+  "version": "0.1.0"
+}

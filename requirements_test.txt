@@ -1,0 +1,14 @@
+# Matches Home Assistant Core 2026.9.4.
+pytest-homeassistant-custom-component==0.13.367
+# Pin the Bluetooth stack to Core's versions; pip otherwise picks a newer
+# habluetooth that does not match.
+bleak==3.0.2
+bleak-retry-connector==4.7.0
+habluetooth==6.26.11
+bluetooth-data-tools==1.29.24
+bluetooth-adapters==2.4.0
+bluetooth-auto-recovery==1.6.4
+dbus-fast==5.0.22
+aiousbwatcher==1.1.2
+serialx==1.10.0
+ruff
