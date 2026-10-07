@@ -6,9 +6,9 @@ themselves as `Sunset lights`.
 
 - Bluetooth discovery: lamps show up on the Integrations page by themselves,
   also through ESPHome Bluetooth proxies.
-- One device and one light entity per lamp, with RGB color, brightness and the
-  lamp's built-in scenes as effects.
-- No flash on turn-on: color and brightness are sent before the lamp powers up.
+- One device and one light entity per lamp, with RGB color and brightness.
+- No bright flash on turn-on: the lamp is dimmed before it is turned off, so it
+  comes back on nearly dark before the new color and brightness arrive.
 - Connects only when it has something to send and disconnects after 10 seconds
   idle. That frees the proxy's connection slot, and the lamp's single
   connection, so the phone app keeps working.
@@ -34,39 +34,26 @@ Home Assistant 2026.9 or newer is required.
 
 ## How the light behaves
 
-The lamp does not report its state, so the entity shows the last state that was
-sent (`assumed_state`), and keeps it across restarts.
+The integration does not read the lamp's state back, so the entity shows the
+last state that was sent (`assumed_state`), and keeps it across restarts.
 
-- **Turning on from off** sends color (or scene) and brightness, then power,
-  then color and brightness once more. The repeat is there because it is not
-  yet known whether the lamp applies settings while it is off.
+The lamp ignores color and brightness commands while it is off, and powers up
+at the color and brightness it had when it was turned off. So:
+
+- **Turning off** sets the brightness to 1 % first, then powers off.
+- **Turning on from off** powers on (the lamp briefly shows its last color at
+  1 %), then sends color, then brightness. Color goes first so the lamp is never
+  bright in the old color.
 - **Turning on while on** sends only what changed. If nothing changed, it sends
   power on again, in case the lamp was switched off with its remote.
+
+Because of this, a lamp turned off from Home Assistant comes back at 1 % when it
+is switched on with its own remote or the phone app.
+
 - **Brightness** 1–255 is mapped to 1–100 %, rounding up, so a low brightness
-  never turns into 0 %.
+  never turns into 0 %. 1 % is still visibly lit.
 - **Color temperature** is converted to RGB by Home Assistant.
-- **Transitions** are not supported.
-- **Effects** run the lamp's built-in scenes. Setting a color, or the effect
-  `off`, ends a scene.
-
-### Scenes
-
-The app shows twenty scenes with IDs `0x80`–`0x93`. Only these have been
-matched to their app names so far:
-
-| Effect | ID |
-|---|---|
-| Green Prairie | `0x81` |
-| Ghost | `0x84` |
-| Disco | `0x87` |
-| Alarm | `0x88` |
-| Savanah | `0x8B` |
-
-The others are called `Scene N` by position (`Scene 1` is `0x80`, `Scene 20` is
-`0x93`). The app's other names are Fantasy, Sunset, Forest, Sunrise,
-Midsummer, Tropicaltwilight, Rubyglow, Aurora, Lake Placid, Neon, Sundowner,
-Bluestar, Redrose, Rating and Autumn. If you match one up, please open an
-issue or a pull request.
+- **Transitions** and the lamp's built-in scenes are not supported.
 
 ## Action: `mergbw.send_raw`
 
@@ -90,7 +77,7 @@ With a response variable, the result looks like
 ## Protocol
 
 Everything below was learned from other projects (see Credits) and from
-testing.
+testing on a lamp.
 
 - Advertised service UUID `00003519-0000-1000-8000-00805f9b34fb`, local name
   `Sunset lights`. MeRGBW LED strips share the service UUID but use a
@@ -99,7 +86,7 @@ testing.
   from `0000fff4-…`.
 - The lamp accepts one connection at a time.
 
-Frames:
+Frames sent to the lamp:
 
 ```
 0x55  command  0xFF  length  payload…  checksum
@@ -108,6 +95,7 @@ Frames:
 `length` is the length of the whole frame (payload + 5). The checksum is the
 sum of all preceding bytes with carries folded back in
 (`while s > 0xFF: s = (s >> 8) + (s & 0xFF)`), then inverted (`~s & 0xFF`).
+The lamp does not actually check it: frames with a wrong checksum are accepted.
 
 | Command | Meaning | Payload | Example |
 |---|---|---|---|
@@ -115,20 +103,21 @@ sum of all preceding bytes with carries folded back in
 | `0x01` | power | `01` on, `00` off | `5501ff0601a2` |
 | `0x03` | color | R, G, B | `5503ff08ff8c28ea` |
 | `0x05` | brightness | percent, 0–100 | `5505ff06643b` |
-| `0x06` | scene | scene ID | `5506ff06811d` |
+| `0x06` | scene (not used) | scene ID, `0x80`–`0x93` | `5506ff06811d` |
 
-### Not verified yet
+While the lamp is off it ignores color and brightness and does not acknowledge
+them. Power and status requests work either way.
 
-- Whether the lamp takes color and brightness while powered off. If it does,
-  the repeat after power on can go (`RESEND_AFTER_POWER_ON` in `const.py`).
-- Whether the one-byte brightness actually dims, and whether 1 % is visible.
-  The strips use two bytes instead, big-endian, `(i + 5) * 10`.
-- Whether the lamp checks the checksum at all.
-- The full scene map.
-- Whether the status request gets an answer. If it reports power, the entity
-  no longer needs to assume its state.
+The lamp answers on the notify characteristic with frames that start with
+`0x56`:
 
-`mergbw.send_raw` is meant for answering these.
+- **Acknowledgement** of a command it carried out: `56 <command> ff 06 00 xx`.
+- **Status** in reply to `0x00`: `56 00 ff 0f <power> <brightness %> 00 … 00 xx`,
+  for example `5600ff0f0164000000000000000045` for on at 100 %. The color is not
+  reported.
+
+The last byte of these replies is not the checksum described above; its
+meaning is unknown.
 
 ## Development
 

@@ -20,8 +20,7 @@ NOTIFY_CHAR_UUID: Final = "0000fff4-0000-1000-8000-00805f9b34fb"
 # which would otherwise lock out the phone app.
 IDLE_DISCONNECT_DELAY: Final = 10
 
-# It is not yet known whether the lamp applies color and brightness while it is
-# powered off. Turning on therefore stages color and brightness, powers on, and
-# then sends them again. If the lamp turns out to accept writes while off, set
-# this to False to save the two extra writes.
-RESEND_AFTER_POWER_ON: Final = True
+# The lamp ignores color and brightness while it is off, and powers up at the
+# brightness it had when it was turned off. Turning off therefore dims it to
+# this level first, so the next turn-on starts nearly dark instead of flashing.
+OFF_BRIGHTNESS_PERCENT: Final = 1

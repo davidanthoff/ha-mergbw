@@ -19,26 +19,6 @@ CMD_SYNC = 0x00
 CMD_POWER = 0x01
 CMD_COLOR = 0x03
 CMD_BRIGHTNESS = 0x05
-CMD_SCENE = 0x06
-
-SCENE_FIRST_ID = 0x80
-SCENE_LAST_ID = 0x93
-
-# Scene IDs that have been checked against a real lamp. The phone app shows
-# twenty scenes in 0x80-0x93; the others are named "Scene N" by position until
-# someone maps them.
-_VERIFIED_SCENES = {
-    0x81: "Green Prairie",
-    0x84: "Ghost",
-    0x87: "Disco",
-    0x88: "Alarm",
-    0x8B: "Savanah",
-}
-
-SCENES: dict[str, int] = {
-    _VERIFIED_SCENES.get(scene_id, f"Scene {scene_id - SCENE_FIRST_ID + 1}"): scene_id
-    for scene_id in range(SCENE_FIRST_ID, SCENE_LAST_ID + 1)
-}
 
 
 def checksum(data: bytes) -> int:
@@ -72,11 +52,6 @@ def brightness(percent: int) -> bytes:
     if not 0 <= percent <= 100:
         raise ValueError(f"brightness percent out of range: {percent}")
     return build_frame(CMD_BRIGHTNESS, bytes((percent,)))
-
-
-def scene(scene_id: int) -> bytes:
-    """Frame that starts a built-in scene."""
-    return build_frame(CMD_SCENE, bytes((scene_id,)))
 
 
 def sync_request() -> bytes:

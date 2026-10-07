@@ -12,7 +12,6 @@ from custom_components.mergbw import protocol
         (protocol.power(False), "5501ff0600a3"),
         (protocol.color(255, 140, 40), "5503ff08ff8c28ea"),
         (protocol.brightness(100), "5505ff06643b"),
-        (protocol.scene(0x81), "5506ff06811d"),
         (protocol.sync_request(), "5500ff05a5"),
     ],
 )
@@ -54,16 +53,3 @@ def test_brightness_frame_rejects_out_of_range() -> None:
     """Percent outside 0-100 is rejected."""
     with pytest.raises(ValueError, match="out of range"):
         protocol.brightness(101)
-
-
-def test_scenes() -> None:
-    """All twenty scene IDs have a unique name, verified ones by their app name."""
-    assert len(protocol.SCENES) == 20
-    assert sorted(protocol.SCENES.values()) == list(range(0x80, 0x94))
-    assert protocol.SCENES["Green Prairie"] == 0x81
-    assert protocol.SCENES["Ghost"] == 0x84
-    assert protocol.SCENES["Disco"] == 0x87
-    assert protocol.SCENES["Alarm"] == 0x88
-    assert protocol.SCENES["Savanah"] == 0x8B
-    assert protocol.SCENES["Scene 1"] == 0x80
-    assert protocol.SCENES["Scene 20"] == 0x93
