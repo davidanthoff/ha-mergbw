@@ -16,7 +16,7 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.mergbw.const import IDLE_DISCONNECT_DELAY
 
 from .conftest import written
-from .test_light import POWER_OFF, POWER_ON, turn_off, turn_on
+from .test_light import BRIGHTNESS_1, POWER_OFF, POWER_ON, turn_off, turn_on
 
 
 async def idle(hass: HomeAssistant, freezer: FrozenDateTimeFactory, seconds: float):
@@ -81,10 +81,10 @@ async def test_stale_connection_is_retried(
     await turn_on(hass)
     written(client)
 
-    client.write_gatt_char.side_effect = [BleakError("stale"), None]
+    client.write_gatt_char.side_effect = [BleakError("stale"), None, None]
     await turn_off(hass)
     assert establish_connection.call_count == 2
-    assert written(client) == [POWER_OFF, POWER_OFF]
+    assert written(client) == [BRIGHTNESS_1, BRIGHTNESS_1, POWER_OFF]
 
 
 async def test_fresh_connection_is_not_retried(

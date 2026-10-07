@@ -27,9 +27,6 @@
     "communication_error": {
       "message": "Could not reach {name}: {error}"
     },
-    "unknown_effect": {
-      "message": "Unknown effect: {effect}"
-    },
     "invalid_frame": {
       "message": "Not a hex-encoded frame: {frame}"
     },
