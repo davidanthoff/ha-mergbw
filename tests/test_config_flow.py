@@ -14,7 +14,7 @@ from homeassistant.loader import async_get_integration
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.mergbw.const import DOMAIN
+from custom_components.mergbw.const import CONF_KEEP_CONNECTED, DOMAIN
 
 from . import LAMP_ADDRESS, LAMP_TITLE, service_info
 
@@ -156,3 +156,21 @@ async def test_user_already_configured(
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_options_keep_connected(
+    hass: HomeAssistant, config_entry: MockConfigEntry
+) -> None:
+    """keep_connected is off by default and can be turned on."""
+    config_entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "init"
+    schema = result["data_schema"]({})
+    assert schema == {CONF_KEEP_CONNECTED: False}
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_KEEP_CONNECTED: True}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert config_entry.options == {CONF_KEEP_CONNECTED: True}

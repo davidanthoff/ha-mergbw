@@ -9,9 +9,16 @@ from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_discovered_service_info,
 )
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
 from homeassistant.const import CONF_ADDRESS
+from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
@@ -20,7 +27,13 @@ from homeassistant.helpers.selector import (
 )
 import voluptuous as vol
 
-from .const import ADVERTISED_SERVICE_UUID, DOMAIN, LOCAL_NAME_PREFIX
+from .const import (
+    ADVERTISED_SERVICE_UUID,
+    CONF_KEEP_CONNECTED,
+    DEFAULT_KEEP_CONNECTED,
+    DOMAIN,
+    LOCAL_NAME_PREFIX,
+)
 
 _MAC_RE = re.compile(r"^[0-9A-F]{2}(:[0-9A-F]{2}){5}$")
 
@@ -53,6 +66,12 @@ class MeRGBWConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize the flow."""
         self._address: str | None = None
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> MeRGBWOptionsFlow:
+        """Return the options flow."""
+        return MeRGBWOptionsFlow()
 
     async def async_step_bluetooth(
         self, discovery_info: BluetoothServiceInfoBleak
@@ -125,4 +144,28 @@ class MeRGBWConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema({vol.Required(CONF_ADDRESS): field}),
             errors=errors,
+        )
+
+
+class MeRGBWOptionsFlow(OptionsFlowWithReload):
+    """Options for a lamp. Saving them reloads the entry."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Choose whether to keep the connection open."""
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_KEEP_CONNECTED,
+                        default=self.config_entry.options.get(
+                            CONF_KEEP_CONNECTED, DEFAULT_KEEP_CONNECTED
+                        ),
+                    ): BooleanSelector(),
+                }
+            ),
         )

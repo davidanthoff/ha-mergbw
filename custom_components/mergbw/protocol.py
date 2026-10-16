@@ -10,9 +10,11 @@ checksum is the one's complement of the byte sum with carries folded back in.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import math
 
 HEADER = 0x55
+REPLY_HEADER = 0x56
 SEPARATOR = 0xFF
 
 CMD_SYNC = 0x00
@@ -67,3 +69,39 @@ def brightness_to_percent(value: int) -> int:
     if not 1 <= value <= 255:
         raise ValueError(f"brightness out of range: {value}")
     return math.ceil(value * 100 / 255)
+
+
+def percent_to_brightness(percent: int) -> int:
+    """Map lamp percent 1-100 to Home Assistant brightness 1-255.
+
+    Rounds down, so that brightness_to_percent maps the result back to the
+    same percent.
+    """
+    if not 1 <= percent <= 100:
+        raise ValueError(f"brightness percent out of range: {percent}")
+    return max(1, percent * 255 // 100)
+
+
+@dataclass(frozen=True)
+class Status:
+    """What the lamp reports in reply to a status request."""
+
+    on: bool
+    brightness_percent: int
+
+
+def parse_status(data: bytes) -> Status | None:
+    """Return the status in a notification, or None if it is something else.
+
+    A status frame looks like ``56 00 ff 0f <power> <brightness %> 00 ... xx``.
+    The color is not reported.
+    """
+    if (
+        len(data) < 6
+        or data[0] != REPLY_HEADER
+        or data[1] != CMD_SYNC
+        or data[2] != SEPARATOR
+        or data[3] != len(data)
+    ):
+        return None
+    return Status(on=data[4] != 0, brightness_percent=min(data[5], 100))

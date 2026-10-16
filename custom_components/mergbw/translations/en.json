@@ -40,7 +40,7 @@
   "services": {
     "send_raw": {
       "name": "Send raw frame",
-      "description": "Sends a raw protocol frame to a lamp and optionally returns what the lamp sends back. Meant for working out the protocol. Does not update the light's state.",
+      "description": "Sends a raw protocol frame to a lamp and optionally returns what the lamp sends back. Meant for working out the protocol. A status reply updates the light's power and brightness.",
       "fields": {
         "config_entry_id": {
           "name": "Lamp",
@@ -57,6 +57,18 @@
         "listen": {
           "name": "Listen",
           "description": "When a response is requested, how long to collect notifications from the lamp."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "keep_connected": "Keep the connection open"
+        },
+        "data_description": {
+          "keep_connected": "Commands go through right away, and the light shows the power and brightness the lamp reports, also after using its remote. While connected, the lamp's phone app cannot connect. Without this, Home Assistant connects for each command and disconnects after 10 seconds."
         }
       }
     }

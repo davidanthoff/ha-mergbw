@@ -11,7 +11,7 @@ from homeassistant.components.light import (
     LightEntity,
 )
 from homeassistant.const import STATE_OFF, STATE_ON
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -37,13 +37,14 @@ async def async_setup_entry(
 class MeRGBWLight(LightEntity, RestoreEntity):
     """A MeRGBW sunset lamp.
 
-    The state shown is the last one sent, restored across restarts. The lamp
-    can report power and brightness, but not color, so it is not read back.
+    The state is restored across restarts. Power and brightness are taken from
+    what the lamp reports, whenever it does: with keep_connected that is after
+    every write and on a regular poll, so the state is not assumed. The lamp
+    does not report its color, so the color shown is always the last one sent.
     """
 
     _attr_has_entity_name = True
     _attr_name = None
-    _attr_assumed_state = True
     _attr_should_poll = False
     _attr_color_mode = ColorMode.RGB
     _attr_supported_color_modes = {ColorMode.RGB}
@@ -51,6 +52,7 @@ class MeRGBWLight(LightEntity, RestoreEntity):
     def __init__(self, lamp: Lamp) -> None:
         """Initialize the light."""
         self._lamp = lamp
+        self._attr_assumed_state = not lamp.keep_connected
         self._attr_unique_id = lamp.address
         self._attr_device_info = DeviceInfo(
             connections={(CONNECTION_BLUETOOTH, lamp.address)},
@@ -75,8 +77,9 @@ class MeRGBWLight(LightEntity, RestoreEntity):
         )
 
     async def async_added_to_hass(self) -> None:
-        """Restore the last known state."""
+        """Restore the last known state and listen for what the lamp reports."""
         await super().async_added_to_hass()
+        self.async_on_remove(self._lamp.async_add_status_listener(self._on_status))
         if (last_state := await self.async_get_last_state()) is not None:
             if last_state.state == STATE_ON:
                 self._attr_is_on = True
@@ -95,6 +98,26 @@ class MeRGBWLight(LightEntity, RestoreEntity):
             and all(isinstance(c, int) and 0 <= c <= 255 for c in rgb)
         ):
             self._attr_rgb_color = (rgb[0], rgb[1], rgb[2])
+
+    @callback
+    def _on_status(self, status: protocol.Status) -> None:
+        """Take power and brightness from a status report."""
+        self._attr_is_on = status.on
+        # While off the lamp reports the dimmed level from async_turn_off. Keep
+        # the brightness to come back to instead.
+        if (
+            status.on
+            and status.brightness_percent > 0
+            and (
+                self._attr_brightness is None
+                or protocol.brightness_to_percent(self._attr_brightness)
+                != status.brightness_percent
+            )
+        ):
+            self._attr_brightness = protocol.percent_to_brightness(
+                status.brightness_percent
+            )
+        self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on, optionally changing color or brightness."""
