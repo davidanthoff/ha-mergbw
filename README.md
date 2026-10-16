@@ -9,9 +9,12 @@ themselves as `Sunset lights`.
 - One device and one light entity per lamp, with RGB color and brightness.
 - No bright flash on turn-on: the lamp is dimmed before it is turned off, so it
   comes back on nearly dark before the new color and brightness arrive.
-- Connects only when it has something to send and disconnects after 10 seconds
-  idle. That frees the proxy's connection slot, and the lamp's single
-  connection, so the phone app keeps working.
+- By default connects only when it has something to send and disconnects
+  after 10 seconds idle. That frees the proxy's connection slot, and the lamp's
+  single connection, so the phone app keeps working.
+- Optionally keeps the connection open instead, so commands go through right
+  away and the light shows the lamp's real power and brightness (see
+  [Options](#options)).
 - Errors raise `HomeAssistantError`, so script steps with
   `continue_on_error: true` carry on when a lamp is unplugged or out of range.
 - The last state is restored after a restart.
@@ -32,10 +35,36 @@ like.
 
 Home Assistant 2026.9 or newer is required.
 
+## Options
+
+Each lamp has one option, under **Settings → Devices & services → MeRGBW
+Sunset Lamp → Configure**:
+
+**Keep the connection open** (off by default). Connecting to these lamps can be
+slow, because they advertise only every few seconds; through an ESPHome proxy a
+connection can take 30 seconds or more. With this option:
+
+- The connection is opened when Home Assistant starts and kept open, so
+  commands are sent right away. If it drops, it is re-established in the
+  background, right away and then after 5, 15, 30 and every 60 seconds. A
+  warning is logged after three failed attempts in a row, and again when the
+  lamp is reachable.
+- The lamp is asked for its status after every command and every 30 seconds.
+  The light's on/off state and brightness follow what the lamp reports, also
+  when it is switched with its remote, and the state is no longer assumed, so
+  dashboards show a toggle instead of separate on and off buttons.
+- The lamp accepts only one connection, so its phone app cannot connect while
+  Home Assistant holds it. The connection also occupies one of the proxy's
+  connection slots (ESPHome proxies have three).
+
+Changing the option reloads the lamp.
+
 ## How the light behaves
 
-The integration does not read the lamp's state back, so the entity shows the
-last state that was sent (`assumed_state`), and keeps it across restarts.
+Without **Keep the connection open**, the integration does not read the lamp's
+state back, so the entity shows the last state that was sent (`assumed_state`).
+With it, power and brightness are read back; the color is never reported by
+the lamp, so it is always the last one sent. The state is kept across restarts.
 
 The lamp ignores color and brightness commands while it is off, and powers up
 at the color and brightness it had when it was turned off. So:
@@ -58,8 +87,8 @@ is switched on with its own remote or the phone app.
 ## Action: `mergbw.send_raw`
 
 For working out the protocol. Sends bytes to a lamp as they are, and can return
-what the lamp sends back on its notify characteristic. It does not change the
-light entity's state.
+what the lamp sends back on its notify characteristic. If the lamp answers with
+a status frame, the light entity's power and brightness are updated from it.
 
 ```yaml
 action: mergbw.send_raw

@@ -7,7 +7,7 @@ from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
-from .const import DOMAIN
+from .const import CONF_KEEP_CONNECTED, DEFAULT_KEEP_CONNECTED, DOMAIN
 from .lamp import Lamp, MeRGBWConfigEntry
 from .services import async_setup_services
 
@@ -25,10 +25,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: MeRGBWConfigEntry) -> bool:
     """Set up a lamp from a config entry.
 
-    The lamp is not contacted here. It may be unplugged or out of range, and
-    connections are made on demand anyway.
+    The lamp is not contacted here. It may be unplugged or out of range.
+    Connections are made on demand, or with keep_connected, in the background.
     """
-    lamp = Lamp(hass, entry.data[CONF_ADDRESS], entry.title)
+    lamp = Lamp(
+        hass,
+        entry.data[CONF_ADDRESS],
+        entry.title,
+        keep_connected=entry.options.get(CONF_KEEP_CONNECTED, DEFAULT_KEEP_CONNECTED),
+    )
     entry.runtime_data = lamp
 
     async def _async_stop(_event: Event) -> None:
@@ -38,6 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MeRGBWConfigEntry) -> bo
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _async_stop)
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    lamp.async_start()
     return True
 
 

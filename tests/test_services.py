@@ -29,7 +29,6 @@ async def test_send_raw(
     """A frame is sent verbatim."""
     await send_raw(hass, setup_entry.entry_id, False, frame="55 01 ff 06 01 a3")
     assert written(client) == ["5501ff0601a3"]
-    client.start_notify.assert_not_called()
 
 
 async def test_send_raw_with_checksum(
@@ -47,15 +46,22 @@ async def test_send_raw_returns_notifications(
 ) -> None:
     """With a response requested, notifications are collected and returned."""
 
-    async def _start_notify(_uuid, handler) -> None:
+    async def _write(_uuid, _frame) -> None:
+        handler = client.start_notify.call_args.args[1]
         handler(None, bytearray.fromhex("5600ff0732"))
 
-    client.start_notify.side_effect = _start_notify
+    client.write_gatt_char.side_effect = _write
     response = await send_raw(
         hass, setup_entry.entry_id, True, frame="5500ff05a5", listen=0
     )
     assert response == {"sent": "5500ff05a5", "notifications": ["5600ff0732"]}
-    client.stop_notify.assert_called_once()
+
+    # Only notifications from the request's own listening window are returned.
+    client.write_gatt_char.side_effect = None
+    response = await send_raw(
+        hass, setup_entry.entry_id, True, frame="5500ff05a5", listen=0
+    )
+    assert response == {"sent": "5500ff05a5", "notifications": []}
 
 
 async def test_send_raw_invalid_frame(

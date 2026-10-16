@@ -53,3 +53,29 @@ def test_brightness_frame_rejects_out_of_range() -> None:
     """Percent outside 0-100 is rejected."""
     with pytest.raises(ValueError, match="out of range"):
         protocol.brightness(101)
+
+
+def test_percent_to_brightness_round_trips() -> None:
+    """Every percent maps to a brightness that maps back to it."""
+    for percent in range(1, 101):
+        value = protocol.percent_to_brightness(percent)
+        assert 1 <= value <= 255
+        assert protocol.brightness_to_percent(value) == percent
+    with pytest.raises(ValueError, match="out of range"):
+        protocol.percent_to_brightness(0)
+
+
+def test_parse_status() -> None:
+    """Status replies are recognized; other frames are not."""
+    assert protocol.parse_status(
+        bytes.fromhex("5600ff0f0164000000000000000045")
+    ) == protocol.Status(on=True, brightness_percent=100)
+    assert protocol.parse_status(
+        bytes.fromhex("5600ff0f0001000000000000000045")
+    ) == protocol.Status(on=False, brightness_percent=1)
+    # Acknowledgement of a power command.
+    assert protocol.parse_status(bytes.fromhex("5601ff060000")) is None
+    # Wrong length byte, too short, or a frame sent to the lamp.
+    assert protocol.parse_status(bytes.fromhex("5600ff0732")) is None
+    assert protocol.parse_status(bytes.fromhex("5600ff")) is None
+    assert protocol.parse_status(bytes.fromhex("5500ff05a5")) is None
